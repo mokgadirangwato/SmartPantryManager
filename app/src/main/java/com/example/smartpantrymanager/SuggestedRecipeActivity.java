@@ -1,5 +1,6 @@
 package com.example.smartpantrymanager;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -41,11 +42,9 @@ public class SuggestedRecipeActivity extends AppCompatActivity {
 
         AppDatabase db = AppDatabase.getInstance(this);
 
-        // Get recipes from Room database
         List<Recipe> allRecipes =
                 db.recipeDao().getAllRecipes();
 
-        // Get pantry items from Room database
         List<PantryItem> pantryItems =
                 db.pantryDao().getAllItems();
 
@@ -59,9 +58,8 @@ public class SuggestedRecipeActivity extends AppCompatActivity {
                 "Pantry items in database: " + pantryItems.size()
         );
 
-        // Match recipes against pantry
         List<Recipe> suggestedRecipes =
-                RecipeMatcher.getSuggestedRecipes(
+                MatchingEngine.getSuggestedRecipes(
                         allRecipes,
                         pantryItems
                 );
@@ -81,16 +79,46 @@ public class SuggestedRecipeActivity extends AppCompatActivity {
             tvNoRecipes.setVisibility(View.GONE);
             recyclerView.setVisibility(View.VISIBLE);
 
-            adapter = new RecipeAdapter(suggestedRecipes);
+            adapter = new RecipeAdapter(
+                    suggestedRecipes,
+                    recipe -> openRecipeDetails(recipe)
+            );
 
             recyclerView.setAdapter(adapter);
         }
+    }
+
+    private void openRecipeDetails(Recipe recipe) {
+
+        Intent intent = new Intent(
+                SuggestedRecipeActivity.this,
+                RecipeDetailsActivity.class
+        );
+
+        intent.putExtra(
+                "recipe_name",
+                recipe.getName()
+        );
+
+        intent.putExtra(
+                "recipe_ingredients",
+                recipe.getIngredients()
+        );
+
+        intent.putExtra(
+                "recipe_steps",
+                recipe.getSteps()
+        );
+
+        startActivity(intent);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
 
-        loadSuggestedRecipes();
+        if (recyclerView != null && tvNoRecipes != null) {
+            loadSuggestedRecipes();
+        }
     }
 }

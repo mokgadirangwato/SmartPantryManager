@@ -16,15 +16,17 @@
         android:theme="@style/Theme.SmartPantry"
         android:usesCleartextTraffic="true">
 
-        <!-- The Splash screen launches FIRST -->
+        <!-- Splash screen launches first -->
         <activity
             android:name=".SplashActivity"
             android:exported="true"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
         </activity>
 
         <!-- Main Activity -->
@@ -32,15 +34,24 @@
             android:name=".MainActivity"
             android:exported="false" />
 
-        <!-- Other activities -->
+        <!-- Pantry Add/Edit Activity -->
         <activity
             android:name=".AddEditIngredientActivity"
             android:exported="false" />
+
+        <!-- Settings Activity -->
         <activity
             android:name=".SettingsActivity"
             android:exported="false" />
+
+        <!-- Suggested Recipes Activity -->
         <activity
             android:name=".SuggestedRecipeActivity"
+            android:exported="false" />
+
+        <!-- Recipe Details Activity -->
+        <activity
+            android:name=".RecipeDetailsActivity"
             android:exported="false" />
 
     </application>

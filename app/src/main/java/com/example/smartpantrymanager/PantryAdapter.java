@@ -12,7 +12,8 @@ import com.example.smartpantrymanager.data.PantryItem;
 
 import java.util.List;
 
-public class PantryAdapter extends RecyclerView.Adapter<PantryAdapter.VH> {
+public class PantryAdapter
+        extends RecyclerView.Adapter<PantryAdapter.VH> {
 
     public interface OnItemClickListener {
         void onItemClick(PantryItem item);
@@ -39,47 +40,56 @@ public class PantryAdapter extends RecyclerView.Adapter<PantryAdapter.VH> {
             @NonNull ViewGroup parent,
             int viewType) {
 
-        View v = LayoutInflater.from(parent.getContext())
+        View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_pantry, parent, false);
 
-        return new VH(v);
+        return new VH(view);
     }
 
     @Override
     public void onBindViewHolder(
-            @NonNull VH h,
-            int pos) {
+            @NonNull VH holder,
+            int position) {
 
-        PantryItem item = items.get(pos);
+        PantryItem item = items.get(position);
 
-        h.name.setText(item.name);
+        // Pantry item name
+        holder.name.setText(item.name);
 
-        String qtyText =
-                item.quantity + " "
-                        + (item.unit != null ? item.unit : "");
+        // Quantity and unit
+        String quantityText = String.valueOf(item.quantity);
 
-        h.qty.setText(qtyText.trim());
+        if (item.unit != null && !item.unit.isEmpty()) {
+            quantityText += " " + item.unit;
+        }
 
+        holder.qty.setText(quantityText);
+
+        // Expiry date
         if (item.expiryDate != null
                 && !item.expiryDate.isEmpty()) {
 
-            h.expiry.setText(
+            holder.expiry.setText(
                     "Expires: " + item.expiryDate
             );
 
-            h.expiry.setVisibility(View.VISIBLE);
+            holder.expiry.setVisibility(View.VISIBLE);
 
         } else {
 
-            h.expiry.setVisibility(View.GONE);
+            holder.expiry.setVisibility(View.GONE);
         }
 
+        // Item click
         if (listener != null) {
-            h.itemView.setOnClickListener(
+
+            holder.itemView.setOnClickListener(
                     v -> listener.onItemClick(item)
             );
+
         } else {
-            h.itemView.setOnClickListener(null);
+
+            holder.itemView.setOnClickListener(null);
         }
     }
 
@@ -94,12 +104,12 @@ public class PantryAdapter extends RecyclerView.Adapter<PantryAdapter.VH> {
         TextView qty;
         TextView expiry;
 
-        VH(View v) {
-            super(v);
+        VH(@NonNull View view) {
+            super(view);
 
-            name = v.findViewById(R.id.tvPantryName);
-            qty = v.findViewById(R.id.tvPantryQuantity);
-            expiry = v.findViewById(R.id.tvPantryExpiry);
+            name = view.findViewById(R.id.tvPantryName);
+            qty = view.findViewById(R.id.tvPantryQuantity);
+            expiry = view.findViewById(R.id.tvPantryExpiry);
         }
     }
 }

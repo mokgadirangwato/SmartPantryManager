@@ -1,6 +1,5 @@
 package com.example.smartpantrymanager;
 
-import com.example.smartpantrymanager.data.AppDatabase;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
@@ -9,10 +8,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.smartpantrymanager.data.AppDatabase;
 import com.example.smartpantrymanager.data.PantryItem;
 import com.example.smartpantrymanager.data.Recipe;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+
+import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,12 +28,20 @@ public class MainActivity extends AppCompatActivity {
     private List<PantryItem> pantryList = new ArrayList<>();
     private PantryAdapter pantryAdapter;
 
+    private RecyclerView rvPantry;
+    private TextView tvEmpty;
+
     // ==========================================================
     // RECIPES
     // ==========================================================
 
     private List<Recipe> recipeList = new ArrayList<>();
-    private RecipeAdapter recipeAdapter;
+
+    // ==========================================================
+    // DATABASE
+    // ==========================================================
+
+    private AppDatabase db;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,17 +60,21 @@ public class MainActivity extends AppCompatActivity {
         // DATABASE
         // ==========================================================
 
-        AppDatabase db = AppDatabase.getInstance(this);
+        db = AppDatabase.getInstance(this);
 
         // ==========================================================
         // PANTRY RECYCLER VIEW
         // ==========================================================
 
-        RecyclerView rvPantry = findViewById(R.id.rvPantry);
+        rvPantry = findViewById(R.id.rvPantry);
+        tvEmpty = findViewById(R.id.tvEmpty);
 
         pantryList = db.pantryDao().getAllItems();
 
-        pantryAdapter = new PantryAdapter(pantryList);
+        pantryAdapter = new PantryAdapter(
+                pantryList,
+                item -> openEditIngredient(item)
+        );
 
         rvPantry.setLayoutManager(
                 new LinearLayoutManager(this)
@@ -68,21 +82,23 @@ public class MainActivity extends AppCompatActivity {
 
         rvPantry.setAdapter(pantryAdapter);
 
+        updateEmptyMessage();
+
         Log.d(
                 "PANTRY_TEST",
                 "Pantry items loaded: " + pantryList.size()
         );
 
         // ==========================================================
-        // LOAD RECIPES FROM LOCAL DATABASE (Replacing API code)
+        // LOAD RECIPES
         // ==========================================================
 
         recipeList = db.recipeDao().getAllRecipes();
 
-        Log.d("DB_LOAD", "Recipes loaded from DB: " + recipeList.size());
-
-        // Run the matching test after recipes are loaded
-        testRecipeMatching();
+        Log.d(
+                "DB_LOAD",
+                "Recipes loaded from DB: " + recipeList.size()
+        );
 
         // ==========================================================
         // BOTTOM NAVIGATION
@@ -157,70 +173,45 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // ==========================================================
-    // TEST RECIPE MATCHING
+    // OPEN ITEM FOR EDITING
     // ==========================================================
 
-    private void testRecipeMatching() {
+    private void openEditIngredient(PantryItem item) {
 
-        // Create a fake pantry for testing the recipe matcher
-        List<PantryItem> testPantry =
-                new ArrayList<>();
-
-        testPantry.add(
-                new PantryItem(
-                        "Eggs",
-                        6,
-                        "pieces",
-                        ""
-                )
+        Intent intent = new Intent(
+                MainActivity.this,
+                AddEditIngredientActivity.class
         );
 
-        testPantry.add(
-                new PantryItem(
-                        "Cheese",
-                        1,
-                        "block",
-                        ""
-                )
+        // Send the ID of the item that was clicked
+        intent.putExtra(
+                "pantry_item_id",
+                item.id
         );
 
-        testPantry.add(
-                new PantryItem(
-                        "Butter",
-                        1,
-                        "stick",
-                        ""
-                )
-        );
+        startActivity(intent);
+    }
 
-        // ==========================================================
-        // FIXED LINE HERE: Changed RecipeMatcher to MatchingEngine
-        // ==========================================================
-        List<Recipe> matched =
-                MatchingEngine.getSuggestedRecipes(
-                        recipeList,
-                        testPantry
-                );
+    // ==========================================================
+    // UPDATE EMPTY PANTRY MESSAGE
+    // ==========================================================
 
-        // Log results
-        Log.d(
-                "MATCH_TEST",
-                "Recipes you can make: "
-                        + matched.size()
-        );
+    private void updateEmptyMessage() {
 
-        for (Recipe recipe : matched) {
+        if (pantryList == null || pantryList.isEmpty()) {
 
-            Log.d(
-                    "MATCH_TEST",
-                    "Matched Recipe: "
-                            + recipe.getName()
-            );
+            tvEmpty.setVisibility(TextView.VISIBLE);
+            rvPantry.setVisibility(RecyclerView.GONE);
+
+        } else {
+
+            tvEmpty.setVisibility(TextView.GONE);
+            rvPantry.setVisibility(RecyclerView.VISIBLE);
         }
     }
 
     // ==========================================================
-    // REFRESH PANTRY WHEN RETURNING TO THIS SCREEN
+    // REFRESH PANTRY WHEN RETURNING TO SCREEN
     // ==========================================================
 
     @Override
@@ -228,30 +219,28 @@ public class MainActivity extends AppCompatActivity {
 
         super.onResume();
 
-        // Get database
-        AppDatabase db =
-                AppDatabase.getInstance(this);
+        // Don't refresh before the views are created
+        if (db == null || pantryAdapter == null) {
+            return;
+        }
 
-        // Get latest pantry items
+        // Get latest pantry items from Room
         List<PantryItem> updatedPantry =
                 db.pantryDao().getAllItems();
 
         Log.d(
                 "PANTRY_TEST",
-                "Pantry items in DB: "
-                        + updatedPantry.size()
+                "Pantry items in DB: " + updatedPantry.size()
         );
 
-        // Update the RecyclerView
-        if (pantryAdapter != null) {
+        // Update the existing list
+        pantryList.clear();
+        pantryList.addAll(updatedPantry);
 
-            pantryList.clear();
+        // Tell RecyclerView that the data changed
+        pantryAdapter.notifyDataSetChanged();
 
-            pantryList.addAll(
-                    updatedPantry
-            );
-
-            pantryAdapter.notifyDataSetChanged();
-        }
+        // Update empty message
+        updateEmptyMessage();
     }
 }
