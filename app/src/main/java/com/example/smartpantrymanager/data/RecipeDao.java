@@ -35,6 +35,9 @@ public interface RecipeDao {
     @Query("SELECT COUNT(*) FROM recipes")
     int getCount();
 
+    @Query("DELETE FROM recipes WHERE name = :recipeName")
+    void deleteRecipeByName(String recipeName);
+
     // FAVORITES: Get only favorited recipes
     @Query("SELECT * FROM recipes WHERE isFavorite = 1")
     List<Recipe> getFavoriteRecipes();
@@ -42,4 +45,7 @@ public interface RecipeDao {
     // FAVORITES: Mark or unmark a recipe as favorite
     @Query("UPDATE recipes SET isFavorite = :favorite WHERE id = :recipeId")
     void setFavorite(int recipeId, boolean favorite);
+    // CHECK: Prevent duplicate recipes by name
+    @Query("SELECT COUNT(*) FROM recipes WHERE name = :recipeName")
+    int getCountByName(String recipeName);
 }
