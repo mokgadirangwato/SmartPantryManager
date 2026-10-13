@@ -8,6 +8,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.smartpantrymanager.data.AppDatabase;
 import com.example.smartpantrymanager.data.Recipe;
 
 import java.util.List;
@@ -55,36 +56,64 @@ public class RecipeAdapter
 
         holder.name.setText(recipe.getName());
 
-        if (listener != null) {
+        // Show whether this recipe is already a favourite.
+        updateFavoriteIcon(holder, recipe);
 
-            holder.itemView.setOnClickListener(
-                    v -> listener.onClick(recipe)
+        // Favourite button: save the change in the database.
+        holder.favorite.setOnClickListener(v -> {
+            boolean newFavoriteStatus = !recipe.isFavorite;
+
+            AppDatabase db = AppDatabase.getInstance(
+                    holder.itemView.getContext()
             );
 
-        } else {
+            db.recipeDao().setFavorite(
+                    recipe.id,
+                    newFavoriteStatus
+            );
 
-            holder.itemView.setOnClickListener(null);
+            // Update the in-memory recipe and refresh its heart.
+            recipe.isFavorite = newFavoriteStatus;
+            updateFavoriteIcon(holder, recipe);
+        });
+
+        // Keep the existing recipe-details click functionality.
+        holder.itemView.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onClick(recipe);
+            }
+        });
+    }
+
+    private void updateFavoriteIcon(VH holder, Recipe recipe) {
+        if (recipe.isFavorite) {
+            holder.favorite.setText("♥");
+            holder.favorite.setContentDescription(
+                    "Remove from favourites"
+            );
+        } else {
+            holder.favorite.setText("♡");
+            holder.favorite.setContentDescription(
+                    "Add to favourites"
+            );
         }
     }
 
     @Override
     public int getItemCount() {
-
-        return recipes != null
-                ? recipes.size()
-                : 0;
+        return recipes != null ? recipes.size() : 0;
     }
 
     static class VH extends RecyclerView.ViewHolder {
 
         TextView name;
+        TextView favorite;
 
         VH(@NonNull View view) {
             super(view);
 
-            name = view.findViewById(
-                    R.id.tvRecipeName
-            );
+            name = view.findViewById(R.id.tvRecipeName);
+            favorite = view.findViewById(R.id.tvFavorite);
         }
     }
 }

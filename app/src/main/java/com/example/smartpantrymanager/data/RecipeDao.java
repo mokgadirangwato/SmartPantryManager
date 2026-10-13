@@ -38,6 +38,9 @@ public interface RecipeDao {
     @Query("DELETE FROM recipes WHERE name = :recipeName")
     void deleteRecipeByName(String recipeName);
 
+    @Query("UPDATE recipes SET ingredients = :ingredients WHERE name = :recipeName")
+    void updateIngredientsByName(String recipeName, String ingredients);
+
     // FAVORITES: Get only favorited recipes
     @Query("SELECT * FROM recipes WHERE isFavorite = 1")
     List<Recipe> getFavoriteRecipes();

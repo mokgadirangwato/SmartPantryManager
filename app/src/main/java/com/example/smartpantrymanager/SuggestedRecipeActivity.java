@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.smartpantrymanager.data.AppDatabase;
+import com.example.smartpantrymanager.data.PantryItem;
 import com.example.smartpantrymanager.data.Recipe;
 
 import java.util.ArrayList;
@@ -30,7 +31,6 @@ public class SuggestedRecipeActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.activity_suggested);
 
         recyclerView = findViewById(R.id.rvSuggested);
@@ -39,12 +39,11 @@ public class SuggestedRecipeActivity extends AppCompatActivity {
 
         db = AppDatabase.getInstance(this);
 
-        // Set up the recipe list.
         recyclerView.setLayoutManager(
                 new LinearLayoutManager(this)
         );
 
-        // Show all recipes when the picture is clicked.
+        // Show matching recipes when the recipe picture is tapped.
         recipeCard.setOnClickListener(v -> {
             showRecipes = true;
             loadSuggestedRecipes();
@@ -53,76 +52,108 @@ public class SuggestedRecipeActivity extends AppCompatActivity {
         loadSuggestedRecipes();
     }
 
-    // Load ALL recipes from the database.
     private void loadSuggestedRecipes() {
 
         if (db == null) {
             db = AppDatabase.getInstance(this);
         }
 
-        List<Recipe> allRecipes = db.recipeDao().getAllRecipes();
+        // Load all saved recipes.
+        List<Recipe> allRecipes =
+                db.recipeDao().getAllRecipes();
 
-        // Display every saved recipe, without ingredient filtering.
-        suggestedRecipes = new ArrayList<>(allRecipes);
+        // Load the current pantry contents.
+        List<PantryItem> pantryItems =
+                db.pantryDao().getAllItems();
 
+        // Apply strict ingredient matching.
+        suggestedRecipes =
+                MatchingEngine.getSuggestedRecipes(
+                        allRecipes,
+                        pantryItems
+                );
+
+        // DEBUG: Print all pantry ingredients.
+        for (PantryItem item : pantryItems) {
+            Log.d(
+                    "PANTRY_CHECK",
+                    "Ingredient: [" + item.name + "]"
+            );
+        }
+
+        // DEBUG: Print all saved recipes and their ingredients.
+        for (Recipe recipe : allRecipes) {
+            Log.d(
+                    "PANTRY_CHECK",
+                    "Recipe: " + recipe.getName()
+                            + " | Ingredients: "
+                            + recipe.getIngredients()
+            );
+        }
+
+        // DEBUG: Show the number of matching recipes.
         Log.d(
-                "RECIPE_TEST",
-                "Recipes loaded from database: " + allRecipes.size()
+                "PANTRY_CHECK",
+                "Matching recipes: " + suggestedRecipes.size()
         );
 
         Log.d(
                 "RECIPE_TEST",
-                "Recipes displayed: " + suggestedRecipes.size()
+                "Total recipes: " + allRecipes.size()
+        );
+
+        Log.d(
+                "RECIPE_TEST",
+                "Pantry items: " + pantryItems.size()
+        );
+
+        Log.d(
+                "RECIPE_TEST",
+                "Strictly matching recipes: "
+                        + suggestedRecipes.size()
         );
 
         displaySuggestedRecipes();
     }
 
-    // Display recipes in the RecyclerView.
     private void displaySuggestedRecipes() {
 
-        // Keep the list hidden until the picture is tapped.
+        // Keep the list hidden until the recipe picture is tapped.
         if (!showRecipes) {
             recyclerView.setVisibility(View.GONE);
             tvNoRecipes.setVisibility(View.GONE);
             return;
         }
 
-        if (suggestedRecipes == null || suggestedRecipes.isEmpty()) {
+        if (suggestedRecipes == null
+                || suggestedRecipes.isEmpty()) {
 
             recyclerView.setVisibility(View.GONE);
             tvNoRecipes.setVisibility(View.VISIBLE);
-            tvNoRecipes.setText("No recipes available. Please add recipes.");
+
+            tvNoRecipes.setText(
+                    "No recipes match your current pantry. "
+                            + "Add the missing ingredients to get suggestions."
+            );
+
+            recyclerView.setAdapter(null);
+            adapter = null;
 
         } else {
 
             tvNoRecipes.setVisibility(View.GONE);
             recyclerView.setVisibility(View.VISIBLE);
 
-            // Create the adapter only once.
-            if (adapter == null) {
+            // Refresh the list with matching recipes only.
+            adapter = new RecipeAdapter(
+                    suggestedRecipes,
+                    this::openRecipeDetails
+            );
 
-                adapter = new RecipeAdapter(
-                        suggestedRecipes,
-                        recipe -> openRecipeDetails(recipe)
-                );
-
-                recyclerView.setAdapter(adapter);
-
-            } else {
-
-                // Refresh the adapter with the latest database records.
-                adapter = new RecipeAdapter(
-                        suggestedRecipes,
-                        recipe -> openRecipeDetails(recipe)
-                );
-
-                recyclerView.setAdapter(adapter);
-            }
+            recyclerView.setAdapter(adapter);
         }
     }
 
-    // Open the selected recipe's details.
     private void openRecipeDetails(Recipe recipe) {
 
         Intent intent = new Intent(
@@ -130,18 +161,29 @@ public class SuggestedRecipeActivity extends AppCompatActivity {
                 RecipeDetailsActivity.class
         );
 
-        intent.putExtra("recipe_name", recipe.getName());
-        intent.putExtra("recipe_ingredients", recipe.getIngredients());
-        intent.putExtra("recipe_steps", recipe.getSteps());
+        intent.putExtra(
+                "recipe_name",
+                recipe.getName()
+        );
+
+        intent.putExtra(
+                "recipe_ingredients",
+                recipe.getIngredients()
+        );
+
+        intent.putExtra(
+                "recipe_steps",
+                recipe.getSteps()
+        );
 
         startActivity(intent);
     }
 
-    // Reload recipes when returning to this screen.
     @Override
     protected void onResume() {
         super.onResume();
 
+        // Reload pantry and recipes whenever this screen resumes.
         if (recyclerView != null && tvNoRecipes != null) {
             loadSuggestedRecipes();
         }
