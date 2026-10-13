@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true">
@@ -52,35 +54,47 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Unit Input -->
+        <!-- Unit Dropdown -->
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/unitInputLayout"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Unit (e.g. pieces, grams, cups)"
+            android:hint="Unit"
             android:layout_marginBottom="16dp">
 
-            <com.google.android.material.textfield.TextInputEditText
+            <com.google.android.material.textfield.MaterialAutoCompleteTextView
                 android:id="@+id/etUnit"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="text" />
+                android:inputType="none"
+                android:clickable="true"
+                android:focusable="false"
+                android:focusableInTouchMode="false" />
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Expiry Date Input -->
+
         <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/expiryDateLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Expiry Date (Optional, YYYY-MM-DD)"
-            android:layout_marginBottom="32dp">
+            android:hint="Expiry date (optional)"
+            android:layout_marginTop="16dp"
+            app:boxBackgroundMode="outline">
 
             <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etExpiry"
+                android:id="@+id/etExpiryDate"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="date" />
+                android:focusable="false"
+                android:clickable="true"
+                android:inputType="none"
+                android:drawableEnd="@android:drawable/ic_menu_my_calendar"
+                android:padding="16dp" />
 
         </com.google.android.material.textfield.TextInputLayout>
+
 
         <!-- Save Button -->
         <com.google.android.material.button.MaterialButton

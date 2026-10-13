@@ -1,7 +1,10 @@
 package com.example.smartpantrymanager;
 
+import android.app.DatePickerDialog;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -9,15 +12,18 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.example.smartpantrymanager.data.AppDatabase;
 import com.example.smartpantrymanager.data.PantryItem;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputEditText;
 
+import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
 
 public class AddEditIngredientActivity extends AppCompatActivity {
 
     private TextInputEditText etName;
     private TextInputEditText etQuantity;
-    private TextInputEditText etUnit;
+    private MaterialAutoCompleteTextView etUnit;
     private TextInputEditText etExpiry;
 
     private MaterialButton btnSave;
@@ -30,6 +36,27 @@ public class AddEditIngredientActivity extends AppCompatActivity {
 
     // True when editing an existing item
     private boolean isEditMode = false;
+
+    // Available measurement units
+    private final String[] units = {
+            "kg",
+            "g",
+            "mg",
+            "L",
+            "mL",
+            "pcs",
+            "tbsp",
+            "tsp",
+            "cups",
+            "pack",
+            "bottle",
+            "can",
+            "cloves",
+            "slices",
+            "pinch",
+            "whole",
+            "dozen"
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,10 +71,37 @@ public class AddEditIngredientActivity extends AppCompatActivity {
         etName = findViewById(R.id.etName);
         etQuantity = findViewById(R.id.etQuantity);
         etUnit = findViewById(R.id.etUnit);
-        etExpiry = findViewById(R.id.etExpiry);
+        etExpiry = findViewById(R.id.etExpiryDate);
 
         btnSave = findViewById(R.id.btnSave);
         btnDelete = findViewById(R.id.btnDelete);
+
+        // ==========================================================
+        // UNIT DROPDOWN
+        // ==========================================================
+
+        ArrayAdapter<String> unitAdapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_dropdown_item_1line,
+                units
+        );
+
+        etUnit.setAdapter(unitAdapter);
+
+        // Prevent the keyboard from appearing for the unit field
+        etUnit.setInputType(0);
+
+        // Open dropdown when the field is tapped
+        etUnit.setOnClickListener(v -> {
+            etUnit.showDropDown();
+        });
+
+        // Open dropdown when the field receives focus
+        etUnit.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                etUnit.post(() -> etUnit.showDropDown());
+            }
+        });
 
         // ==========================================================
         // DATABASE
@@ -56,7 +110,7 @@ public class AddEditIngredientActivity extends AppCompatActivity {
         db = AppDatabase.getInstance(this);
 
         // ==========================================================
-        // CHECK IF WE ARE EDITING AN EXISTING ITEM
+        // CHECK IF EDITING AN EXISTING ITEM
         // ==========================================================
 
         if (getIntent().hasExtra("pantry_item_id")) {
@@ -84,12 +138,54 @@ public class AddEditIngredientActivity extends AppCompatActivity {
 
         btnDelete.setOnClickListener(v -> deleteIngredient());
 
-        // Show/hide delete button
+        // Show or hide delete button
         if (isEditMode) {
-            btnDelete.setVisibility(MaterialButton.VISIBLE);
+            btnDelete.setVisibility(View.VISIBLE);
         } else {
-            btnDelete.setVisibility(MaterialButton.GONE);
+            btnDelete.setVisibility(View.GONE);
         }
+
+        // ==========================================================
+        // EXPIRY DATE PICKER
+        // ==========================================================
+
+        etExpiry.setOnClickListener(v -> showDatePicker());
+
+        etExpiry.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                showDatePicker();
+            }
+        });
+    }
+
+    // ==========================================================
+    // SHOW EXPIRY DATE PICKER
+    // ==========================================================
+
+    private void showDatePicker() {
+
+        Calendar calendar = Calendar.getInstance();
+
+        DatePickerDialog datePickerDialog = new DatePickerDialog(
+                this,
+                (view, year, month, dayOfMonth) -> {
+
+                    String selectedDate = String.format(
+                            Locale.getDefault(),
+                            "%04d-%02d-%02d",
+                            year,
+                            month + 1,
+                            dayOfMonth
+                    );
+
+                    etExpiry.setText(selectedDate);
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH)
+        );
+
+        datePickerDialog.show();
     }
 
     // ==========================================================
@@ -98,8 +194,7 @@ public class AddEditIngredientActivity extends AppCompatActivity {
 
     private void loadPantryItem() {
 
-        List<PantryItem> items =
-                db.pantryDao().getAllItems();
+        List<PantryItem> items = db.pantryDao().getAllItems();
 
         for (PantryItem item : items) {
 
@@ -111,8 +206,10 @@ public class AddEditIngredientActivity extends AppCompatActivity {
                         String.valueOf(item.quantity)
                 );
 
+                // Restore the previously saved unit
                 etUnit.setText(
-                        item.unit != null ? item.unit : ""
+                        item.unit != null ? item.unit : "",
+                        false
                 );
 
                 etExpiry.setText(
@@ -121,92 +218,92 @@ public class AddEditIngredientActivity extends AppCompatActivity {
                                 : ""
                 );
 
-                break;
+                return;
             }
         }
+
+        Toast.makeText(
+                this,
+                "Ingredient could not be found.",
+                Toast.LENGTH_SHORT
+        ).show();
+
+        finish();
     }
 
     // ==========================================================
-    // SAVE / UPDATE INGREDIENT
+    // SAVE OR UPDATE INGREDIENT
     // ==========================================================
 
     private void saveIngredient() {
 
-        // Get values from input fields
-        String name = etName.getText()
-                .toString()
-                .trim();
+        String name = etName.getText() != null
+                ? etName.getText().toString().trim()
+                : "";
 
-        String qtyString = etQuantity.getText()
-                .toString()
-                .trim();
+        String qtyString = etQuantity.getText() != null
+                ? etQuantity.getText().toString().trim()
+                : "";
 
-        String unit = etUnit.getText()
-                .toString()
-                .trim();
+        String unit = etUnit.getText() != null
+                ? etUnit.getText().toString().trim()
+                : "";
 
-        String expiry = etExpiry.getText()
-                .toString()
-                .trim();
+        String expiry = etExpiry.getText() != null
+                ? etExpiry.getText().toString().trim()
+                : "";
 
-        // ==========================================================
-        // VALIDATE NAME
-        // ==========================================================
-
+        // Validate name
         if (TextUtils.isEmpty(name)) {
-
             etName.setError("Name is required");
             etName.requestFocus();
-
             return;
         }
 
-        // ==========================================================
-        // VALIDATE QUANTITY
-        // ==========================================================
-
+        // Validate quantity
         if (TextUtils.isEmpty(qtyString)) {
-
             etQuantity.setError("Quantity is required");
             etQuantity.requestFocus();
-
             return;
         }
 
-        // ==========================================================
-        // CONVERT QUANTITY TO DOUBLE
-        // ==========================================================
-
+        // Validate quantity format
         double quantity;
 
         try {
-
             quantity = Double.parseDouble(qtyString);
 
-            if (quantity <= 0) {
+            if (Double.isNaN(quantity)
+                    || Double.isInfinite(quantity)
+                    || quantity <= 0) {
 
                 etQuantity.setError(
                         "Quantity must be greater than 0"
                 );
 
                 etQuantity.requestFocus();
-
                 return;
             }
 
         } catch (NumberFormatException e) {
 
-            etQuantity.setError(
-                    "Enter a valid number"
-            );
-
+            etQuantity.setError("Enter a valid number");
             etQuantity.requestFocus();
-
             return;
         }
 
+        // Validate unit selection
+        if (TextUtils.isEmpty(unit)) {
+            etUnit.setError("Please select a unit");
+            etUnit.requestFocus();
+            etUnit.showDropDown();
+            return;
+        }
+
+        etUnit.setError(null);
+
         // ==========================================================
-        // EDIT EXISTING ITEM
+        // UPDATE EXISTING ITEM
         // ==========================================================
 
         if (isEditMode) {
@@ -222,17 +319,14 @@ public class AddEditIngredientActivity extends AppCompatActivity {
                 ).show();
 
                 finish();
-
                 return;
             }
 
-            // Update existing values
             item.name = name;
             item.quantity = quantity;
             item.unit = unit;
             item.expiryDate = expiry;
 
-            // Save changes
             db.pantryDao().update(item);
 
             Toast.makeText(
@@ -241,13 +335,11 @@ public class AddEditIngredientActivity extends AppCompatActivity {
                     Toast.LENGTH_SHORT
             ).show();
 
-        }
+        } else {
 
-        // ==========================================================
-        // ADD NEW ITEM
-        // ==========================================================
-
-        else {
+            // ======================================================
+            // ADD NEW ITEM
+            // ======================================================
 
             PantryItem newItem = new PantryItem(
                     name,
@@ -256,7 +348,6 @@ public class AddEditIngredientActivity extends AppCompatActivity {
                     expiry
             );
 
-            // Insert new item
             db.pantryDao().insert(newItem);
 
             Toast.makeText(
@@ -276,8 +367,7 @@ public class AddEditIngredientActivity extends AppCompatActivity {
 
     private PantryItem findPantryItem() {
 
-        List<PantryItem> items =
-                db.pantryDao().getAllItems();
+        List<PantryItem> items = db.pantryDao().getAllItems();
 
         for (PantryItem item : items) {
 
@@ -310,11 +400,9 @@ public class AddEditIngredientActivity extends AppCompatActivity {
             ).show();
 
             finish();
-
             return;
         }
 
-        // Delete from Room
         db.pantryDao().delete(item);
 
         Toast.makeText(
@@ -323,7 +411,6 @@ public class AddEditIngredientActivity extends AppCompatActivity {
                 Toast.LENGTH_SHORT
         ).show();
 
-        // Return to pantry
         finish();
     }
 }
