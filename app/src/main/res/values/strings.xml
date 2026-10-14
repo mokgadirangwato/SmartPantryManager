@@ -1,3 +1,13 @@
 <resources>
     <string name="app_name">Smart Pantry</string>
+    <string-array name="pantry_units">
+        <item>Grams (g)</item>
+        <item>Kilograms (kg)</item>
+        <item>Millilitres (ml)</item>
+        <item>Litres (L)</item>
+        <item>Pieces</item>
+        <item>Teaspoons (tsp)</item>
+        <item>Tablespoons (tbsp)</item>
+        <item>Cups</item>
+    </string-array>
 </resources>
