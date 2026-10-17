@@ -1,13 +1,32 @@
 <resources>
     <string name="app_name">Smart Pantry</string>
+
     <string-array name="pantry_units">
+        <!-- Weight -->
         <item>Grams (g)</item>
         <item>Kilograms (kg)</item>
+
+        <!-- Volume -->
         <item>Millilitres (ml)</item>
         <item>Litres (L)</item>
-        <item>Pieces</item>
         <item>Teaspoons (tsp)</item>
         <item>Tablespoons (tbsp)</item>
         <item>Cups</item>
+
+        <!-- Individual items -->
+        <item>Pieces</item>
+        <item>Cloves</item>
+        <item>Slices</item>
+
+        <!-- Packaging and storage -->
+        <item>Bottles</item>
+        <item>Trays</item>
+        <item>Packs</item>
+        <item>Packets</item>
+        <item>Boxes</item>
+        <item>Cans</item>
+        <item>Jars</item>
+        <item>Loaves</item>
+        <item>Whole</item>
     </string-array>
 </resources>

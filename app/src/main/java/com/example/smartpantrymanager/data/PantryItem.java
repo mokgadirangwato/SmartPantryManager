@@ -14,6 +14,12 @@ public class PantryItem {
     public String unit;
     public String expiryDate;
 
+    // Optional package information.
+    // Example: 2 bottles, with 500 mL in each bottle.
+    public double contentsPerPackage;
+    public String contentsUnit;
+
+    // Keep the original constructor so existing code still works.
     public PantryItem(
             String name,
             double quantity,
@@ -24,5 +30,7 @@ public class PantryItem {
         this.quantity = quantity;
         this.unit = unit;
         this.expiryDate = expiryDate;
+        this.contentsPerPackage = 0;
+        this.contentsUnit = "";
     }
 }
