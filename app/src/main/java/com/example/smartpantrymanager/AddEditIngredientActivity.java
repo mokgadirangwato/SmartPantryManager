@@ -15,7 +15,10 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputEditText;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -31,42 +34,23 @@ public class AddEditIngredientActivity extends AppCompatActivity {
 
     private AppDatabase db;
 
-    // ID of the pantry item being edited
     private int pantryItemId = -1;
-
-    // True when editing an existing item
     private boolean isEditMode = false;
 
-    // Available measurement units
     private final String[] units = {
-            "kg",
-            "g",
-            "mg",
-            "L",
-            "mL",
-            "pcs",
-            "tbsp",
-            "tsp",
-            "cups",
-            "pack",
-            "bottle",
-            "can",
-            "cloves",
-            "slices",
-            "pinch",
-            "whole",
+            "kg", "g", "mg", "L", "mL", "pcs",
+            "tbsp", "tsp", "cups", "pack", "bottle",
+            "can", "cloves", "slices", "pinch", "whole",
             "dozen"
     };
+
+    private final SimpleDateFormat dateFormat =
+            new SimpleDateFormat("yyyy-MM-dd", Locale.US);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.activity_add_edit);
-
-        // ==========================================================
-        // LINK UI COMPONENTS
-        // ==========================================================
 
         etName = findViewById(R.id.etName);
         etQuantity = findViewById(R.id.etQuantity);
@@ -76,9 +60,7 @@ public class AddEditIngredientActivity extends AppCompatActivity {
         btnSave = findViewById(R.id.btnSave);
         btnDelete = findViewById(R.id.btnDelete);
 
-        // ==========================================================
-        // UNIT DROPDOWN
-        // ==========================================================
+        dateFormat.setLenient(false);
 
         ArrayAdapter<String> unitAdapter = new ArrayAdapter<>(
                 this,
@@ -87,37 +69,21 @@ public class AddEditIngredientActivity extends AppCompatActivity {
         );
 
         etUnit.setAdapter(unitAdapter);
-
-        // Prevent the keyboard from appearing for the unit field
         etUnit.setInputType(0);
 
-        // Open dropdown when the field is tapped
-        etUnit.setOnClickListener(v -> {
-            etUnit.showDropDown();
-        });
+        etUnit.setOnClickListener(v -> etUnit.showDropDown());
 
-        // Open dropdown when the field receives focus
         etUnit.setOnFocusChangeListener((v, hasFocus) -> {
             if (hasFocus) {
                 etUnit.post(() -> etUnit.showDropDown());
             }
         });
 
-        // ==========================================================
-        // DATABASE
-        // ==========================================================
-
         db = AppDatabase.getInstance(this);
 
-        // ==========================================================
-        // CHECK IF EDITING AN EXISTING ITEM
-        // ==========================================================
-
         if (getIntent().hasExtra("pantry_item_id")) {
-
             pantryItemId = getIntent().getIntExtra(
-                    "pantry_item_id",
-                    -1
+                    "pantry_item_id", -1
             );
 
             if (pantryItemId != -1) {
@@ -126,28 +92,12 @@ public class AddEditIngredientActivity extends AppCompatActivity {
             }
         }
 
-        // ==========================================================
-        // SAVE BUTTON
-        // ==========================================================
-
         btnSave.setOnClickListener(v -> saveIngredient());
-
-        // ==========================================================
-        // DELETE BUTTON
-        // ==========================================================
-
         btnDelete.setOnClickListener(v -> deleteIngredient());
 
-        // Show or hide delete button
-        if (isEditMode) {
-            btnDelete.setVisibility(View.VISIBLE);
-        } else {
-            btnDelete.setVisibility(View.GONE);
-        }
-
-        // ==========================================================
-        // EXPIRY DATE PICKER
-        // ==========================================================
+        btnDelete.setVisibility(
+                isEditMode ? View.VISIBLE : View.GONE
+        );
 
         etExpiry.setOnClickListener(v -> showDatePicker());
 
@@ -158,20 +108,28 @@ public class AddEditIngredientActivity extends AppCompatActivity {
         });
     }
 
-    // ==========================================================
-    // SHOW EXPIRY DATE PICKER
-    // ==========================================================
-
     private void showDatePicker() {
-
         Calendar calendar = Calendar.getInstance();
 
-        DatePickerDialog datePickerDialog = new DatePickerDialog(
+        String existingDate = getText(etExpiry);
+
+        if (!existingDate.isEmpty()) {
+            try {
+                Date date = dateFormat.parse(existingDate);
+
+                if (date != null) {
+                    calendar.setTime(date);
+                }
+            } catch (ParseException ignored) {
+                // Use today's date if the existing date is invalid.
+            }
+        }
+
+        DatePickerDialog dialog = new DatePickerDialog(
                 this,
                 (view, year, month, dayOfMonth) -> {
-
                     String selectedDate = String.format(
-                            Locale.getDefault(),
+                            Locale.US,
                             "%04d-%02d-%02d",
                             year,
                             month + 1,
@@ -179,122 +137,99 @@ public class AddEditIngredientActivity extends AppCompatActivity {
                     );
 
                     etExpiry.setText(selectedDate);
+                    etExpiry.setError(null);
                 },
                 calendar.get(Calendar.YEAR),
                 calendar.get(Calendar.MONTH),
                 calendar.get(Calendar.DAY_OF_MONTH)
         );
 
-        datePickerDialog.show();
+        dialog.show();
     }
-
-    // ==========================================================
-    // LOAD EXISTING PANTRY ITEM
-    // ==========================================================
 
     private void loadPantryItem() {
+        PantryItem item = findPantryItem();
 
-        List<PantryItem> items = db.pantryDao().getAllItems();
+        if (item == null) {
+            Toast.makeText(
+                    this,
+                    "Ingredient could not be found.",
+                    Toast.LENGTH_SHORT
+            ).show();
 
-        for (PantryItem item : items) {
-
-            if (item.id == pantryItemId) {
-
-                etName.setText(item.name);
-
-                etQuantity.setText(
-                        String.valueOf(item.quantity)
-                );
-
-                // Restore the previously saved unit
-                etUnit.setText(
-                        item.unit != null ? item.unit : "",
-                        false
-                );
-
-                etExpiry.setText(
-                        item.expiryDate != null
-                                ? item.expiryDate
-                                : ""
-                );
-
-                return;
-            }
+            finish();
+            return;
         }
 
-        Toast.makeText(
-                this,
-                "Ingredient could not be found.",
-                Toast.LENGTH_SHORT
-        ).show();
+        etName.setText(item.name);
+        etQuantity.setText(String.valueOf(item.quantity));
 
-        finish();
+        etUnit.setText(
+                item.unit != null ? item.unit : "",
+                false
+        );
+
+        etExpiry.setText(
+                item.expiryDate != null ? item.expiryDate : ""
+        );
     }
 
-    // ==========================================================
-    // SAVE OR UPDATE INGREDIENT
-    // ==========================================================
-
     private void saveIngredient() {
+        String name = getText(etName);
+        String quantityText = getText(etQuantity);
+        String unit = getText(etUnit);
+        String expiry = getText(etExpiry);
 
-        String name = etName.getText() != null
-                ? etName.getText().toString().trim()
-                : "";
-
-        String qtyString = etQuantity.getText() != null
-                ? etQuantity.getText().toString().trim()
-                : "";
-
-        String unit = etUnit.getText() != null
-                ? etUnit.getText().toString().trim()
-                : "";
-
-        String expiry = etExpiry.getText() != null
-                ? etExpiry.getText().toString().trim()
-                : "";
-
-        // Validate name
-        if (TextUtils.isEmpty(name)) {
-            etName.setError("Name is required");
+        // Validate ingredient name.
+        if (name.isEmpty()) {
+            etName.setError("Ingredient name is required");
             etName.requestFocus();
             return;
         }
 
-        // Validate quantity
-        if (TextUtils.isEmpty(qtyString)) {
+        etName.setError(null);
+
+        // Validate quantity.
+        if (quantityText.isEmpty()) {
             etQuantity.setError("Quantity is required");
             etQuantity.requestFocus();
             return;
         }
 
-        // Validate quantity format
         double quantity;
 
         try {
-            quantity = Double.parseDouble(qtyString);
+            quantity = Double.parseDouble(quantityText);
 
             if (Double.isNaN(quantity)
                     || Double.isInfinite(quantity)
                     || quantity <= 0) {
-
                 etQuantity.setError(
-                        "Quantity must be greater than 0"
+                        "Quantity must be greater than zero"
                 );
-
                 etQuantity.requestFocus();
                 return;
             }
-
         } catch (NumberFormatException e) {
-
             etQuantity.setError("Enter a valid number");
             etQuantity.requestFocus();
             return;
         }
 
-        // Validate unit selection
-        if (TextUtils.isEmpty(unit)) {
-            etUnit.setError("Please select a unit");
+        etQuantity.setError(null);
+
+        // Accept only units from the dropdown.
+        boolean validUnit = false;
+
+        for (String allowedUnit : units) {
+            if (allowedUnit.equals(unit)) {
+                validUnit = true;
+                break;
+            }
+        }
+
+        if (!validUnit) {
+            etUnit.setError("Select a unit from the dropdown");
             etUnit.requestFocus();
             etUnit.showDropDown();
             return;
@@ -302,22 +237,35 @@ public class AddEditIngredientActivity extends AppCompatActivity {
 
         etUnit.setError(null);
 
-        // ==========================================================
-        // UPDATE EXISTING ITEM
-        // ==========================================================
+        // Expiry date is optional, but must be valid if provided.
+        if (!expiry.isEmpty()) {
+            try {
+                Date parsedDate = dateFormat.parse(expiry);
+
+                if (parsedDate == null
+                        || !dateFormat.format(parsedDate).equals(expiry)) {
+                    throw new ParseException("Invalid date", 0);
+                }
+            } catch (ParseException e) {
+                etExpiry.setError(
+                        "Use a valid date in yyyy-MM-dd format"
+                );
+                etExpiry.requestFocus();
+                return;
+            }
+        }
+
+        etExpiry.setError(null);
 
         if (isEditMode) {
-
             PantryItem item = findPantryItem();
 
             if (item == null) {
-
                 Toast.makeText(
                         this,
                         "Ingredient could not be found.",
                         Toast.LENGTH_SHORT
                 ).show();
-
                 finish();
                 return;
             }
@@ -336,11 +284,6 @@ public class AddEditIngredientActivity extends AppCompatActivity {
             ).show();
 
         } else {
-
-            // ======================================================
-            // ADD NEW ITEM
-            // ======================================================
-
             PantryItem newItem = new PantryItem(
                     name,
                     quantity,
@@ -357,20 +300,19 @@ public class AddEditIngredientActivity extends AppCompatActivity {
             ).show();
         }
 
-        // Return to pantry
         finish();
     }
 
-    // ==========================================================
-    // FIND PANTRY ITEM
-    // ==========================================================
+    private String getText(android.widget.TextView view) {
+        return view.getText() != null
+                ? view.getText().toString().trim()
+                : "";
+    }
 
     private PantryItem findPantryItem() {
-
         List<PantryItem> items = db.pantryDao().getAllItems();
 
         for (PantryItem item : items) {
-
             if (item.id == pantryItemId) {
                 return item;
             }
@@ -379,12 +321,7 @@ public class AddEditIngredientActivity extends AppCompatActivity {
         return null;
     }
 
-    // ==========================================================
-    // DELETE INGREDIENT
-    // ==========================================================
-
     private void deleteIngredient() {
-
         if (!isEditMode) {
             return;
         }
@@ -392,13 +329,11 @@ public class AddEditIngredientActivity extends AppCompatActivity {
         PantryItem item = findPantryItem();
 
         if (item == null) {
-
             Toast.makeText(
                     this,
                     "Ingredient could not be found.",
                     Toast.LENGTH_SHORT
             ).show();
-
             finish();
             return;
         }
